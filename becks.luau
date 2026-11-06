@@ -3770,7 +3770,7 @@ local function buildUI()
     end
     local about = group(home, "Left", "About", "info")
     about:AddLabel("Becks", true)
-    about:AddLabel("Based on Growblox by bevankeren (used with permission).", true)
+    about:AddLabel("MOJO IS KONTOL", true)
     local log = group(home, "Right", "Update Log", "history")
     log:AddLabel("v1.0 script release", true)
     local notes = group(home, "Left", "Update Notes", "notebook-text")
