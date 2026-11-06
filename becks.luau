@@ -1,3 +1,5 @@
+-- Becks loader
+-- Jalankan di executor, di dalam game Growblox
 
 local E = getgenv()
 local previousResults = E.GrowbloxHub and E.GrowbloxHub.State.results or {}
@@ -3699,7 +3701,7 @@ local function buildUI()
     end
     local logo = API.ResolveBrandLogo()
     local window = library:CreateWindow({Title = "Becks", Icon = logo,
-        Footer = "Becks 1.0  |  based on Growblox by bevankeren",
+        Footer = "Becks 1.0  |  MOJO IS KONTOL",
         Badge = "BETA", Size = UDim2.fromOffset(720, 480), Center = true, AutoShow = true,
         CornerRadius = 10, ToggleButtonIcon = logo,
         Resizable = true, NotifySide = "Right", ToggleKeybind = Enum.KeyCode.RightShift})
