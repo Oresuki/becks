@@ -3667,20 +3667,20 @@ local function buildUI()
     S.library = library
     library.ScreenGui:SetAttribute("BecksOwner", "Growblox")
 
-    S.theme = {name = "Strawberry Milk", palette = {
-        BackgroundColor = Color3.fromRGB(250, 218, 226),
-        MainColor = Color3.fromRGB(240, 195, 206),
-        SurfaceColor = Color3.fromRGB(230, 175, 188),
-        AccentColor = Color3.fromRGB(180, 50, 85),
-        DarkAccentColor = Color3.fromRGB(150, 35, 68),
-        OutlineColor = Color3.fromRGB(210, 155, 170),
-        InlineColor = Color3.fromRGB(245, 205, 215),
-        HoverColor = Color3.fromRGB(235, 180, 195),
-        FontColor = Color3.fromRGB(75, 28, 48),
-        MutedFontColor = Color3.fromRGB(120, 60, 85),
-        ToggleOffColor = Color3.fromRGB(210, 150, 168),
-        RedColor = Color3.fromRGB(215, 45, 80),
-        DestructiveColor = Color3.fromRGB(175, 30, 60),
+    S.theme = {name = "Becks Black", palette = {
+        BackgroundColor = Color3.fromRGB(10, 10, 12),
+        MainColor = Color3.fromRGB(18, 18, 21),
+        SurfaceColor = Color3.fromRGB(28, 28, 32),
+        AccentColor = Color3.fromRGB(70, 70, 78),
+        DarkAccentColor = Color3.fromRGB(45, 45, 51),
+        OutlineColor = Color3.fromRGB(55, 55, 62),
+        InlineColor = Color3.fromRGB(22, 22, 25),
+        HoverColor = Color3.fromRGB(38, 38, 43),
+        FontColor = Color3.fromRGB(255, 255, 255),
+        MutedFontColor = Color3.fromRGB(210, 210, 215),
+        ToggleOffColor = Color3.fromRGB(50, 50, 56),
+        RedColor = Color3.fromRGB(230, 60, 60),
+        DestructiveColor = Color3.fromRGB(190, 45, 45),
     }}
     library.IsLightTheme = false
     for name, color in S.theme.palette do library.Scheme[name] = color end
