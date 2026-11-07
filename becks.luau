@@ -2881,16 +2881,17 @@ local function boxTotal(id)
     for _,v in boxRecords(x,f.baseFloor) do if recordId(v)==id then n+=recordN(v) end end
     return n
 end
-local function onFarmRoute(d)
-    if not f.plan then return true end
-    for _,r in f.plan.rows do
-        if math.abs(d.y-r.floor)<1.6 then return true end
-    end
-    return false
-end
 local function selectedDrop(d)
-    return type(d.uid)=="number" and not d.display and onFarmRoute(d)
-        and (d.id==f.config.item or d.id==f.config.item+1 or (DB[d.id] and DB[d.id].kind=="gem"))
+    if type(d.uid)~="number" or d.display then return false end
+    if not (d.id==f.config.item or d.id==f.config.item+1 or (DB[d.id] and DB[d.id].kind=="gem")) then return false end
+    if f.plan then
+        local near=false
+        for _,r in f.plan.rows do
+            if math.abs(d.y-r.floor)<1.6 then near=true;break end
+        end
+        if not near then return false end
+    end
+    return true
 end
 local function farmSave()
     if not f.boundWorld or type(writefile)~="function" then return end
