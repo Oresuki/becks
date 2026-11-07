@@ -3150,7 +3150,7 @@ end
 local function loot()
     checkSession()
     local counts=inventoryNow()
-    for _,id in {f.config.item,f.config.item+1} do if (counts[id] or 0)>=180 then store(id) end end
+    -- (Display Box auto-store removed: items stay in inventory)
     local px,py=position()
     for _,d in table.clone(world.dropList()) do
         if selectedDrop(d) and not d.pending and not (f.deferred[tostring(d.uid)] and f.deferred[tostring(d.uid)].reserved)
@@ -3220,11 +3220,14 @@ local function scan()
     local p=FarmCore.layout(world.fg,DB,world.w,world.h,f.config.item)
     assert(#p.rows>0,"Dirt farm platforms not found")
     f.baseFloor=p.rows[1].floor
-    assert(tile(0,0,f.baseFloor)==1422 and tile(0,world.w-1,f.baseFloor)==1422,"Two bottom Display Boxes required")
+    -- (Display Box requirement removed)
     for _,t in p.slots do if not accessible(t.x,t.y) then t.noAccess=true end end
     local allowed={}
     for _,t in p.slots do if not t.noAccess then allowed[#allowed+1]=t end end
     p.slots=allowed;p.capacity=#allowed
+    -- Without storage boxes, one inventory stack (max 200) must hold everything
+    while #p.slots>190 do table.remove(p.slots) end
+    p.capacity=#p.slots
     if f.testSlotLimit then
         while #p.slots>f.testSlotLimit do table.remove(p.slots) end
     end
@@ -3353,7 +3356,7 @@ local function remove(t,harvest)
 end
 local env={inventory=inventoryNow,scan=scan,stored=boxTotal,fetch=fetch,tile=function(t)return tile(0,t.x,t.y)end,
     place=put,remove=remove,tree=treeAt,loot=loot,sweep=sweep,save=farmSave,
-    parkBlocks=function(id) stopFarmStride();return store(id) end,
+    -- (parkBlocks removed: no Display Box storage)
     ripe=function(tree)return FarmCore.ready(tree,seedDB,workspace:GetServerTimeNow())end,
     eta=function(tree)return math.max(0,tree.p+seedDB.grow-workspace:GetServerTimeNow())end,
     pool=function(id) syncDeferred();local n=(inventoryNow()[id] or 0)+boxTotal(id);for _,d in f.deferred do if d.id==id then n+=d.n end end;return n end,
@@ -3837,14 +3840,16 @@ local function buildUI()
     S.farmItemOption=farmBox:AddDropdown("GBFarmItem",{Text="Item",Values=labels,Default=selectedLabel,
         Callback=function(value)
             if S.farm.running then return end
-            local ok,err=pcall(API.ConfigureAutoFarm,itemMap[value],S.farm.config.harvestMode)
-            if not ok then S.farm.message=tostring(err) end
+            local id = itemMap[value]
+            if not id then return end
+            local ok,err=pcall(API.ConfigureAutoFarm,id,S.farm.config.harvestMode)
+            S.farm.error = (not ok) and (tostring(err):match("^[^\r\n]+") or tostring(err)) or nil
         end})
     S.farmHarvestOption=farmBox:AddDropdown("GBFarmHarvestMode",{Text="Harvest Mode",Values={"As Ready","Wait Until All Mature"},Default=UiText.harvestLabel(S.farm.config.harvestMode),
         Callback=function(value)
             if S.farm.running then return end
             local ok,err=pcall(function() API.ConfigureAutoFarm(S.farm.config.item,UiText.harvestValue(value)) end)
-            if not ok then S.farm.message=tostring(err) end
+            S.farm.error = (not ok) and (tostring(err):match("^[^\r\n]+") or tostring(err)) or nil
         end})
     local setHarvestValue = S.farmHarvestOption.SetValue
     function S.farmHarvestOption:SetValue(value)
@@ -3907,12 +3912,20 @@ local function buildUI()
             flushToggleRequests()
             if S.farmLabel then pcall(function()
                 local f, a = S.farm, API.AutoFarmStatus()
-                S.farmItemOption:SetDisabled(a.running or S.farmUiStarting)
-                S.farmHarvestOption:SetDisabled(a.running or S.farmUiStarting)
-                local item = DB[f.config.item].name .. " [" .. f.config.item .. "]"
-                local mode = UiText.harvestLabel(f.config.harvestMode)
-                if S.farmItemOption.Value ~= item then S.farmItemOption:SetValue(item) end
-                if S.farmHarvestOption.Value ~= mode then S.farmHarvestOption:SetValue(mode) end
+                local lock = (a.running or S.farmUiStarting) and true or false
+                -- SetDisabled hanya dipanggil saat status berubah, supaya dropdown tidak tertutup terus
+                if S.farmLastLock ~= lock then
+                    S.farmLastLock = lock
+                    S.farmItemOption:SetDisabled(lock)
+                    S.farmHarvestOption:SetDisabled(lock)
+                end
+                -- Sinkron nilai dropdown hanya saat farm berjalan (saat tidak jalan, user bebas memilih)
+                if lock then
+                    local item = DB[f.config.item].name .. " [" .. f.config.item .. "]"
+                    local mode = UiText.harvestLabel(f.config.harvestMode)
+                    if S.farmItemOption.Value ~= item then S.farmItemOption:SetValue(item) end
+                    if S.farmHarvestOption.Value ~= mode then S.farmHarvestOption:SetValue(mode) end
+                end
                 local action = S.farmUiStarting and "Starting" or UiText.farmAction(f)
                 S.farmLabel:SetText(UiText.panel(action, a.error or a.checkpointError or f.verificationWarning) .. string.format(
                     "\nFloor: %s/%d\nBatch: %d/%d\nBlocks: %d | Seeds: %d\nTrees: %d/%d ready\nETA: %ds\nPlaced: %d | Broken: %d\nHarvested: %d\nGems: +%d\nDrops: %d\nStorage: %s",
