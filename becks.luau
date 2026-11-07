@@ -2881,27 +2881,16 @@ local function boxTotal(id)
     for _,v in boxRecords(x,f.baseFloor) do if recordId(v)==id then n+=recordN(v) end end
     return n
 end
+local function onFarmRoute(d)
+    if not f.plan then return true end
+    for _,r in f.plan.rows do
+        if math.abs(d.y-r.floor)<1.6 then return true end
+    end
+    return false
+end
 local function selectedDrop(d)
-    return type(d.uid)=="number" and not d.display and (d.id==f.config.item or d.id==f.config.item+1 or (DB[d.id] and DB[d.id].kind=="gem"))
-end
-local function syncDeferred()
-    local seen, out={},{}
-    for _,d in world.dropList() do if selectedDrop(d) then
-        local key=tostring(d.uid);seen[key]=true
-        local old=f.deferred[key]
-        out[key]={uid=d.uid,id=d.id,n=d.n or 1,x=d.x,y=d.y,reserved=old and old.reserved or false}
-    end end
-    f.deferred=out
-end
-local function applyTake(uid,before,got)
-    local list=world.dropList()
-    for i,d in list do if d.uid==uid and d.n==before then
-        if got>=before then
-            if d.frame then pcall(function() d.frame:Destroy() end) end
-            table.remove(list,i)
-        else d.n=before-got end
-        break
-    end end
+    return type(d.uid)=="number" and not d.display and onFarmRoute(d)
+        and (d.id==f.config.item or d.id==f.config.item+1 or (DB[d.id] and DB[d.id].kind=="gem"))
 end
 local function farmSave()
     if not f.boundWorld or type(writefile)~="function" then return end
