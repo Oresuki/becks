@@ -1,4 +1,3 @@
-
 local G = (getgenv and getgenv()) or _G
 for _, key in ipairs({ "__KzoyzOpus", "__GTFarm" }) do -- __GTFarm = nama versi lama
     if G[key] and G[key].Cleanup then pcall(G[key].Cleanup) end
@@ -597,6 +596,10 @@ local I18N = { Lang = "id", Saved = "id", Ask = true }
 do (function() -- fungsi sendiri: variabel di dalam tidak ikut batas 200 local
 
 I18N.EN = {
+    ["Segarkan world berkala"] = "Refresh world periodically",
+    ["Pabrik jalan: keluar lalu masuk lagi ke world yang sama sebelum game mengeluarkanmu"] = "While Factory runs: leave and re-enter the same world before the game kicks you",
+    ["Segarkan tiap (menit)"] = "Refresh every (minutes)",
+    ["Dihitung sejak masuk world. Game mengeluarkan sekitar 30 menit"] = "Counted from entering the world. The game kicks at about 30 minutes",
     -- grup sidebar & tab
     ["Fitur"] = "Features", ["Keamanan"] = "Security", ["Setelan"] = "Setup",
     ["Pengaturan"] = "Settings", ["Penjaga"] = "Guard", ["Statistik"] = "Stats", ["Tas"] = "Bag",
@@ -12581,6 +12584,8 @@ local Rejoin = {
     DelaySec = 5,
     ScriptUrl = "",
     Keep = false,       -- selalu kembali ke world tujuan kalau berada di luar world
+    Refresh = true,     -- Pabrik jalan: keluar & masuk lagi ke world yang sama sebelum game mengeluarkan
+    RefreshMin = 29,    -- menit sejak masuk world (game mengeluarkan sekitar 30 menit)
     Target = "",        -- world tujuan (kosong = world terakhir)
     LastWorld = "",     -- world terakhir yang dimasuki
     Last = nil,         -- catatan aktivitas terakhir
@@ -12769,6 +12774,36 @@ do (function()
         end
     end)
 
+    -- ===== segarkan world berkala =====
+    -- Game mengeluarkan pemain dari world sekitar 30 menit. Selama Pabrik jalan, keluar sendiri
+    -- sedikit sebelum itu lalu masuk lagi ke world yang sama (aktivitas Pabrik dilanjutkan
+    -- oleh Rejoin.now). Hitung mundur dimulai ulang tiap masuk world.
+    task.spawn(function()
+        local since, lastWorld = nil, ""
+        while alive() do
+            task.wait(1)
+            local wn = Guard.worldName and Guard.worldName() or ""
+            if wn == "" then
+                since = nil
+            elseif not since or wn ~= lastWorld then
+                since = os.clock()
+            end
+            lastWorld = wn
+            local limit = math.max(5, tonumber(Rejoin.RefreshMin) or 29) * 60
+            Rejoin.RefreshLeft = since and math.max(0, limit - (os.clock() - since)) or nil
+            if Rejoin.Refresh and since and Rejoin.RefreshLeft <= 0
+                and Pabrik.Running and not Pabrik.Traveling
+                and not Rejoin.Busy and Guard.Mode == "idle" then
+                -- kalau gagal keluar, coba lagi 1 menit kemudian
+                since = os.clock() - (limit - 60)
+                Rejoin.Status = "Segarkan world: keluar lalu masuk lagi..."
+                pcall(Hook.send, "rejoin", "Segarkan world setelah " .. math.floor(limit / 60) .. " menit di " .. wn)
+                local ok, err = pcall(Rejoin.now)
+                if not ok then warn("[Becks] Segarkan world error: " .. tostring(err)) end
+            end
+        end
+    end)
+
     -- ===== disconnect dari server =====
     local function queueScript()
         local q = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
@@ -12850,7 +12885,7 @@ do (function()
     end
 end)() end
 
-Config.add("Reconnect", Rejoin, { "On", "World", "Server", "DelaySec", "ScriptUrl", "Keep", "Target" })
+Config.add("Reconnect", Rejoin, { "On", "World", "Server", "DelaySec", "ScriptUrl", "Keep", "Target", "Refresh", "RefreshMin" })
 Config.add("Discord", Hook, { "On", "Url", "Penjaga", "Stop", "Full", "Bonus", "Rejoin", "Pabrik", "ReportMin" })
 
 -- ===== TAB: TITIK DROP (dipakai Pabrik, Farmer, Auto Farm) =====
@@ -13115,6 +13150,22 @@ do (function()
 
     safe(function()
         rBox:Toggle({
+            Title = "Segarkan world berkala",
+            Desc = "Pabrik jalan: keluar lalu masuk lagi ke world yang sama sebelum game mengeluarkanmu",
+            Value = Rejoin.Refresh,
+            Callback = function(on) Rejoin.Refresh = on end,
+        })
+    end)
+
+    addNumber(rBox, {
+        Title = "Segarkan tiap (menit)",
+        Desc = "Dihitung sejak masuk world. Game mengeluarkan sekitar 30 menit",
+        Min = 5, Max = 60, Step = 1, Default = Rejoin.RefreshMin,
+        Callback = function(v) Rejoin.RefreshMin = math.floor(v) end,
+    })
+
+    safe(function()
+        rBox:Toggle({
             Title = "Disconnect dari server",
             Desc = "Teleport ulang ke game lalu masuk world terakhir",
             Value = Rejoin.Server,
@@ -13265,8 +13316,13 @@ task.spawn(function()
             Config.Shown = Config.Status
             pcall(function() UI.ConfigStatus:SetDesc(Config.Status) end)
         end
-        local rj = ("%s\nWorld tujuan: %s\nBerhasil masuk lagi: %d kali"):format(
-            Rejoin.Status, (Rejoin.targetWorld and Rejoin.targetWorld() ~= "") and Rejoin.targetWorld() or "-", Rejoin.Count)
+        local refreshText = "mati"
+        if Rejoin.Refresh then
+            refreshText = (Pabrik.Running and Rejoin.RefreshLeft)
+                and (math.ceil(Rejoin.RefreshLeft / 60) .. " menit lagi") or "menunggu Pabrik jalan"
+        end
+        local rj = ("%s\nWorld tujuan: %s\nBerhasil masuk lagi: %d kali\nSegarkan world: %s"):format(
+            Rejoin.Status, (Rejoin.targetWorld and Rejoin.targetWorld() ~= "") and Rejoin.targetWorld() or "-", Rejoin.Count, refreshText)
         if UI.RejoinStatus and rj ~= Rejoin.Shown then
             Rejoin.Shown = rj
             pcall(function() UI.RejoinStatus:SetDesc(rj) end)
