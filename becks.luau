@@ -333,7 +333,7 @@ local Misc = {
     UpHeld = false,   -- tombol ▲ di layar ditahan
     DownHeld = false, -- tombol ▼ di layar ditahan
     CustomName = true,          -- watermark nama (selalu aktif, mati hanya saat script ditutup)
-    NameText = "Zekio supreme",  -- teks watermark
+    NameText = "Becks",  -- teks watermark
 }
 
 -- Auto Clear World
@@ -575,7 +575,7 @@ function UI.runJobs()
         if job and now >= job.at then
             UI.Jobs[key] = nil
             local ok, err = pcall(job.fn)
-            if not ok then warn("[Zekio supreme] UI job " .. tostring(key) .. ": " .. tostring(err)) end
+            if not ok then warn("[Becks] UI job " .. tostring(key) .. ": " .. tostring(err)) end
         end
     end
 end
@@ -905,7 +905,7 @@ I18N.EN = {
     ["Isi URL webhook dulu"] = "Fill in the webhook URL first",
     ["Pesan tes masuk antrian"] = "Test message queued",
     ["URL webhook tidak valid"] = "Invalid webhook URL",
-    ["Tes notifikasi dari Zekio supreme"] = "Test notification from Zekio supreme",
+    ["Tes notifikasi dari Becks"] = "Test notification from Becks",
     -- pilihan dropdown
     ["Kiri → Kanan"] = "Left → Right", ["Semua pemain"] = "All players", ["Semua"] = "All",
     ["Depan"] = "Front", ["Break saja"] = "Break only", ["Place saja"] = "Place only",
@@ -1475,7 +1475,7 @@ do (function()
                     Hook.Status = "Executor tidak punya fungsi request"
                 else
                     local body = HttpService:JSONEncode({
-                        username = "Zekio supreme",
+                        username = "Becks",
                         content = ("**[%s]** %s"):format(LocalPlayer.Name, text),
                     })
                     local ok, res = pcall(req, {
@@ -2008,7 +2008,7 @@ function UI.checkInventory(force, silent)
     if UI.RefInfo then pcall(function() UI.RefInfo:SetDesc(refsText()) end) end
     local why = Refs.InvError or UI.DropErr
     if why then
-        warn("[Zekio supreme] inventori: " .. tostring(why))
+        warn("[Becks] inventori: " .. tostring(why))
         if force and not silent then notify("Inventori", tostring(why), 6) end
     end
     return ok and why == nil, why
@@ -2123,7 +2123,7 @@ local function sendSetTile(layer, x, y, id)
     if Refs.SetTile then
         local ok, err = pcall(Refs.SetTile, layer, x, y, id, false, false)
         if ok then return true end
-        warn("[Zekio supreme] setTile game gagal, pakai remote langsung: " .. tostring(err))
+        warn("[Becks] setTile game gagal, pakai remote langsung: " .. tostring(err))
     end
     if NetOk and type(Net) == "table" and type(Net.tile) == "table" then
         -- sama seperti game: layer 1 = fg, 2 = bg
@@ -4285,6 +4285,8 @@ end
 --   - tile baris atas (kiri, tengah, kanan): berdiri di bawahnya lalu lompat kecil (tap); selama di udara
 --     geser ke tile atas berikutnya yang masih ada drop-nya (bisa kena 2 sekaligus)
 -- lalu balik lagi ke posisi kerja (hx, hy). Hasil: true = sudah balik ke posisi kerja.
+-- Jangkauan lompat ke baris atas (tile dari posisi kerja). Asli 1 = hanya 3 tile; 3 = sampai 7 tile.
+Drops.TopReach = 3
 function Drops.touchAll(tiles, hx, hy)
     local list = Drops.list
     if not list or not OrigIsDown then return false end
@@ -4368,7 +4370,7 @@ function Drops.touchAll(tiles, hx, hy)
         local cur = floor(cs.x)
         local cols = {}
         for _, t in ipairs(has) do
-            if t.y == hy - 1 and abs(t.x - hx) <= 1 and ground(t.x) and walkable(cur, t.x)
+            if t.y == hy - 1 and abs(t.x - hx) <= (Drops.TopReach or 3) and ground(t.x) and walkable(cur, t.x)
                 and not solidAt(t.x, t.y) and dropsAt(t) then
                 cols[#cols + 1] = t.x
             end
@@ -5031,7 +5033,7 @@ local function startClear()
     task.spawn(function()
         local ok, e = pcall(clearLoop)
         if not ok then
-            warn("[Zekio supreme] Auto Clear error: " .. tostring(e))
+            warn("[Becks] Auto Clear error: " .. tostring(e))
             if Clear.Running then stopClear("Error: " .. tostring(e)) end
         end
     end)
@@ -5748,7 +5750,7 @@ local function startFarmer()
     task.spawn(function()
         local ok, e = pcall(farmerLoop)
         if not ok then
-            warn("[Zekio supreme] Farmer error: " .. tostring(e))
+            warn("[Becks] Farmer error: " .. tostring(e))
             if Farmer.Running then stopFarmer("Error: " .. tostring(e)) end
         end
     end)
@@ -5952,7 +5954,7 @@ local function startSpliceRoam()
     task.spawn(function()
         local ok, e = pcall(spliceRoamLoop, id)
         if not ok then
-            warn("[Zekio supreme] Splice error: " .. tostring(e))
+            warn("[Becks] Splice error: " .. tostring(e))
             if Splice.Running and Splice.stop then Splice.stop("Error: " .. tostring(e)) end
         end
     end)
@@ -6262,7 +6264,7 @@ local function pabrikBreak(o)
     end)
     Pabrik.Status = "Break " .. itemName(o.block) .. " di posisi pabrik"
     local ok, e = pcall(farmLoop, id)
-    if not ok then warn("[Zekio supreme] Pabrik break error: " .. tostring(e)) end
+    if not ok then warn("[Becks] Pabrik break error: " .. tostring(e)) end
     State.Running = false
     State.Override = nil
     State.Quiet = false
@@ -6643,7 +6645,7 @@ function Pabrik.start()
     task.spawn(function()
         local ok, e = pcall(pabrikLoop, id)
         if not ok then
-            warn("[Zekio supreme] Pabrik error: " .. tostring(e))
+            warn("[Becks] Pabrik error: " .. tostring(e))
             if Pabrik.Running then Pabrik.stop("Error: " .. tostring(e)) end
         end
     end)
@@ -7335,7 +7337,7 @@ function Vend.start()
     task.spawn(function()
         local ok, e = pcall(vendLoop, id)
         if not ok then
-            warn("[Zekio supreme] Vending error: " .. tostring(e))
+            warn("[Becks] Vending error: " .. tostring(e))
             if Vend.Running then Vend.stop("Error: " .. tostring(e)) end
         end
     end)
@@ -7920,7 +7922,7 @@ function Build.breakSession(o)
     end)
     Build.Status = ("Break %s di posisi break lahan (%d,%d)"):format(itemName(o.block), Build.BreakX, Build.BreakY)
     local ok, e = pcall(farmLoop, id)
-    if not ok then warn("[Zekio supreme] Break lahan error: " .. tostring(e)) end
+    if not ok then warn("[Becks] Break lahan error: " .. tostring(e)) end
     State.Running = false
     State.Override = nil
     State.Quiet = false
@@ -8295,7 +8297,7 @@ function Build.start()
     task.spawn(function()
         local ok, e = pcall(buildLoop, id)
         if not ok then
-            warn("[Zekio supreme] Bangun Lahan error: " .. tostring(e))
+            warn("[Becks] Bangun Lahan error: " .. tostring(e))
             if Build.Running then Build.stop("Error: " .. tostring(e)) end
         end
     end)
@@ -8742,7 +8744,7 @@ task.spawn(function()
 end)
 
 ---------------------------------------------------------------------
--- WATERMARK NAMA Zekio supreme (hanya di layar sendiri)
+-- WATERMARK NAMA Becks (hanya di layar sendiri)
 ---------------------------------------------------------------------
 -- Nama asli (huruf gambar "BitmapText") disembunyikan, diganti teks beranimasi:
 -- warna gradient mengalir + denyut halus. Pemain lain tetap melihat nama asli.
@@ -9193,7 +9195,7 @@ do (function()
     end
     local ok = pcall(function()
         WindUI:Popup({
-            Title = "Zekio supreme",
+            Title = "Becks",
             Icon = "languages",
             Content = "Pilih bahasa menu\nChoose menu language",
             Buttons = {
@@ -9217,14 +9219,14 @@ do
     B.ThemeOk = pcall(function()
         WindUI:AddTheme({
             Name = B.Theme,
-            Accent = Color3.fromRGB(236, 64, 200),        -- magenta (tombol aktif, toggle, highlight)
-            Dialog = Color3.fromRGB(22, 26, 58),          -- navy untuk dialog/popup
-            Outline = Color3.fromRGB(88, 80, 190),        -- garis tepi biru-ungu
-            Text = Color3.fromRGB(235, 238, 255),         -- teks putih kebiruan
-            Placeholder = Color3.fromRGB(140, 150, 210),  -- teks placeholder
-            Background = Color3.fromRGB(14, 17, 40),      -- latar navy gelap
-            Button = Color3.fromRGB(32, 40, 92),          -- tombol biru tua
-            Icon = Color3.fromRGB(90, 160, 255),          -- ikon biru terang
+            Accent = Color3.fromRGB(180, 50, 85),
+            Dialog = Color3.fromRGB(250, 218, 226),
+            Outline = Color3.fromRGB(210, 155, 170),
+            Text = Color3.fromRGB(75, 28, 48),
+            Placeholder = Color3.fromRGB(120, 60, 85),
+            Background = Color3.fromRGB(250, 218, 226),
+            Button = Color3.fromRGB(240, 195, 206),
+            Icon = Color3.fromRGB(150, 35, 68),
         })
     end)
 end
@@ -9259,7 +9261,7 @@ end)
 -- Kalau 1 elemen error, tab lain tetap dibuat
 local function safe(fn)
     local ok, err = pcall(fn)
-    if not ok then warn("[Zekio supreme] UI error: " .. tostring(err)) end
+    if not ok then warn("[Becks] UI error: " .. tostring(err)) end
 end
 
 -- Sidebar dikelompokkan: grup utama bisa dibuka / ditutup (isinya tab-tab)
@@ -10040,7 +10042,7 @@ do (function() -- fungsi sendiri: variabel di dalam tidak ikut batas 200 local
         Guard.BackText = nil
         task.spawn(function()
             local ok, err = pcall(resumeAll, saved, token)
-            if not ok then warn("[Zekio supreme] Penjaga lanjut error: " .. tostring(err)) end
+            if not ok then warn("[Becks] Penjaga lanjut error: " .. tostring(err)) end
             if Guard.Token == token and Guard.Mode == "back" then
                 Guard.Mode, Guard.Saved, Guard.BackText = "idle", nil, nil
             end
@@ -10274,7 +10276,7 @@ do (function() -- fungsi sendiri: variabel di dalam tidak ikut batas 200 local
         while alive() do
             local here = (Guard.Mode ~= "away" and Guard.Mode ~= "out") and playersHere() or {}
             local ok, err = pcall(Guard.tick, here)
-            if not ok then warn("[Zekio supreme] Penjaga error: " .. tostring(err)) end
+            if not ok then warn("[Becks] Penjaga error: " .. tostring(err)) end
             Guard.updateStatus(here)
             task.wait(0.5)
         end
@@ -11034,7 +11036,7 @@ do (function()
         local lastText
         while alive() do
             local ok, err = pcall(limitTick)
-            if not ok then warn("[Zekio supreme] Batas pemain error: " .. tostring(err)) end
+            if not ok then warn("[Becks] Batas pemain error: " .. tostring(err)) end
             local on, off = L("Aktif", "On"), L("Mati", "Off")
             local text = ("%s %d | %s %s | %s %s | %s %s"):format(
                 L("Pemain", "Players"), Lim.Count,
@@ -12281,7 +12283,7 @@ do (function()
             return Vend.labels(m)
         end)
         if not ok then
-            warn("[Zekio supreme] daftar item vending error: " .. tostring(labels))
+            warn("[Becks] daftar item vending error: " .. tostring(labels))
             return 0, "error: " .. tostring(labels)
         end
         local info = ("tas %d | drop %d | vending %d"):format(st.inv, st.drop, st.vend)
@@ -12294,7 +12296,7 @@ do (function()
             end)
             if not okR then
                 Vend.ItemSig = nil
-                warn("[Zekio supreme] refresh dropdown item vending gagal: " .. tostring(errR))
+                warn("[Becks] refresh dropdown item vending gagal: " .. tostring(errR))
                 notify("Vending", "Daftar item gagal dimuat: " .. tostring(errR), 6)
                 return
             end
@@ -13185,7 +13187,7 @@ do (function()
                 end
                 local was = Hook.On
                 Hook.On = true
-                Hook.send("test", "Tes notifikasi dari Zekio supreme")
+                Hook.send("test", "Tes notifikasi dari Becks")
                 Hook.On = was
                 notify("Discord", "Pesan tes masuk antrian", 3)
             end,
@@ -13227,14 +13229,14 @@ do
     task.spawn(function()
         while alive() do
             local ok, err = pcall(UI.runJobs)
-            if not ok then warn("[Zekio supreme] UI runner: " .. tostring(err)) end
+            if not ok then warn("[Becks] UI runner: " .. tostring(err)) end
             task.wait(0.1)
         end
     end)
 end
 
 task.spawn(function()
-    reconnect("Zekio supreme v5.2")
+    reconnect("Becks v5.2")
     -- Penjaga dari config dinyalakan setelah data pemain ketemu
     -- (supaya pemain yang sudah ada dicatat dulu)
     if Config.saved("Penjaga", "On") == true and alive() then
