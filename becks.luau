@@ -12811,16 +12811,19 @@ do (function()
     -- ===== segarkan world berkala =====
     -- Game mengeluarkan pemain dari world sekitar 30 menit. Selama Pabrik jalan, keluar sendiri
     -- sedikit sebelum itu lalu masuk lagi ke world yang sama (aktivitas Pabrik dilanjutkan
-    -- oleh Rejoin.now). Hitung mundur dimulai ulang tiap masuk world.
+    -- oleh Rejoin.now). Hitung mundur DIMULAI ULANG setelah rejoin berhasil (Rejoin.Count naik),
+    -- bukan bergantung pada nama world: Refs.World bisa tetap berisi nama lama saat di menu.
     task.spawn(function()
         local since, lastWorld = nil, ""
         while alive() do
             task.wait(1)
             local wn = Guard.worldName and Guard.worldName() or ""
-            if wn == "" then
-                since = nil
-            elseif not since or wn ~= lastWorld then
-                since = os.clock()
+            if not Rejoin.Busy then
+                if wn == "" then
+                    since = nil              -- terlempar sendiri / di menu: hitung ulang saat masuk
+                elseif not since or wn ~= lastWorld then
+                    since = os.clock()
+                end
             end
             lastWorld = wn
             local limit = math.max(5, tonumber(Rejoin.RefreshMin) or 29) * 60
@@ -12828,12 +12831,24 @@ do (function()
             if Rejoin.Refresh and since and Rejoin.RefreshLeft <= 0
                 and Pabrik.Running and not Pabrik.Traveling
                 and not Rejoin.Busy and Guard.Mode == "idle" then
-                -- kalau gagal keluar, coba lagi 1 menit kemudian
-                since = os.clock() - (limit - 60)
+                local before = Rejoin.Count
                 Rejoin.Status = "Segarkan world: keluar lalu masuk lagi..."
                 pcall(Hook.send, "rejoin", "Segarkan world setelah " .. math.floor(limit / 60) .. " menit di " .. wn)
                 local ok, err = pcall(Rejoin.now)
                 if not ok then warn("[Becks] Segarkan world error: " .. tostring(err)) end
+                -- tunggu proses keluar-masuk selesai (Rejoin.now jalan di thread sendiri)
+                task.wait(1)
+                local waited = 0
+                while alive() and Rejoin.Busy and waited < 240 do
+                    task.wait(1)
+                    waited += 1
+                end
+                if Rejoin.Count > before then
+                    since = os.clock()                    -- berhasil: 29 menit mulai lagi dari sekarang
+                    Rejoin.Status = "Segarkan world berhasil, hitung ulang " .. math.floor(limit / 60) .. " menit"
+                else
+                    since = os.clock() - (limit - 60)     -- gagal: coba lagi 1 menit kemudian
+                end
             end
         end
     end)
