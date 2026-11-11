@@ -364,6 +364,7 @@ local Splice = {
     Planted = 0,
     Fail = {},
     Skip = {},
+    NoCheck = false,    -- lewati cek resep game; biar server yang menolak/menerima
     Status = "-",
     Row = {},           -- baris yang sedang dikerjakan (rapi per baris)
 }
@@ -596,6 +597,8 @@ local I18N = { Lang = "id", Saved = "id", Ask = true }
 do (function() -- fungsi sendiri: variabel di dalam tidak ikut batas 200 local
 
 I18N.EN = {
+    ["Lewati cek resep"] = "Skip recipe check",
+    ["Coba langsung ke server tanpa cek resep game. Dipakai kalau resep jelas ada tapi ditolak script"] = "Try the server directly without checking the game recipe. Use when the recipe clearly exists but the script rejects it",
     ["Segarkan world berkala"] = "Refresh world periodically",
     ["Pabrik jalan: keluar lalu masuk lagi ke world yang sama sebelum game mengeluarkanmu"] = "While Factory runs: leave and re-enter the same world before the game kicks you",
     ["Segarkan tiap (menit)"] = "Refresh every (minutes)",
@@ -11795,11 +11798,20 @@ end)() end
 do (function()
     local okMod, SpliceMod = Shared:Load("Splice")
 
+    -- Return: hasil, urutanTerbalik. Kalau resep game hanya cocok untuk urutan B lalu A,
+    -- hasil tetap dikembalikan dan urutanTerbalik = true.
     function Splice.result(a, b)
         if not (okMod and type(SpliceMod) == "table" and type(SpliceMod.result) == "function") then return nil end
         if not (a and b) then return nil end
         local ok, r = pcall(SpliceMod.result, a, b)
-        return ok and r or nil
+        if ok and r then return r, false end
+        local ok2, r2 = pcall(SpliceMod.result, b, a)
+        if ok2 and r2 then return r2, true end
+        return nil
+    end
+
+    local function moduleReady()
+        return okMod and type(SpliceMod) == "table" and type(SpliceMod.result) == "function"
     end
 
     local function setVisual()
@@ -11886,14 +11898,24 @@ do (function()
     function Splice.start()
         if Splice.Running then return end
         local err
+        -- resep game hanya cocok untuk urutan terbalik: tukar Seed A dan B otomatis
+        if Splice.A and Splice.B and Splice.A ~= Splice.B then
+            local _, reversed = Splice.result(Splice.A, Splice.B)
+            if reversed then
+                Splice.A, Splice.B = Splice.B, Splice.A
+                if UI.SpliceRefresh then pcall(UI.SpliceRefresh, true) end
+                notify("Auto Splice", "Seed A dan B ditukar: resep game cocok dengan urutan itu", 4)
+            end
+        end
         if not Refs.World then
             err = "Data world belum ketemu. Tekan 'Hubungkan ke game'"
         elseif not (Splice.A and Splice.B) then
             err = "Pilih Seed A dan Seed B dulu"
         elseif Splice.A == Splice.B then
             err = "Seed A dan Seed B harus beda"
-        elseif not Splice.result(Splice.A, Splice.B) then
-            err = "Kombinasi ini tidak bisa di-splice"
+        elseif not Splice.NoCheck and not Splice.result(Splice.A, Splice.B) then
+            err = moduleReady() and "Kombinasi ini tidak bisa di-splice (menurut resep game). Kalau yakin bisa, nyalakan 'Lewati cek resep'"
+                or "Modul Splice game tidak termuat. Kalau yakin resepnya ada, nyalakan 'Lewati cek resep'"
         elseif not Splice.Roam and next(State.Offsets) == nil then
             err = "Pilih tile dulu di Grid Tile (tab Farm), atau nyalakan Keliling world"
         elseif State.Running or Clear.Running or Farmer.Running then
@@ -11918,9 +11940,12 @@ do (function()
 
     function Splice.resultText()
         if not (Splice.A and Splice.B) then return "Pilih Seed A dan Seed B" end
-        local r = Splice.result(Splice.A, Splice.B)
-        if not r then return "Hasil: tidak bisa di-splice" end
-        return "Hasil: " .. itemName(r)
+        local r, reversed = Splice.result(Splice.A, Splice.B)
+        if not r then
+            if Splice.NoCheck then return "Hasil: tidak diketahui (cek resep dilewati)" end
+            return moduleReady() and "Hasil: tidak bisa di-splice" or "Hasil: modul Splice game tidak termuat"
+        end
+        return "Hasil: " .. itemName(r) .. (reversed and " (urutan A/B akan ditukar)" or "")
     end
 
     task.spawn(function()
@@ -11941,7 +11966,7 @@ do (function()
     end)
 end)() end
 
-Config.add("Splice", Splice, { "A", "B", "Ms", "Roam" })
+Config.add("Splice", Splice, { "A", "B", "Ms", "Roam", "NoCheck" })
 Splice.Ms = math.max(Splice.Ms, 140)
 
 -- ===== TAB: SPLICE =====
@@ -11964,6 +11989,15 @@ do (function()
             Callback = function(on)
                 if on then Splice.start() elseif Splice.Running then Splice.stop() end
             end,
+        })
+    end)
+
+    safe(function()
+        UI.SpliceNoCheck = sCtl:Toggle({
+            Title = "Lewati cek resep",
+            Desc = "Coba langsung ke server tanpa cek resep game. Dipakai kalau resep jelas ada tapi ditolak script",
+            Value = Splice.NoCheck,
+            Callback = function(on) Splice.NoCheck = on end,
         })
     end)
 
