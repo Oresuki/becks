@@ -315,6 +315,8 @@ local State = {
     Cycles = 0,
     Placed = 0,
     Broken = 0,
+    Hits = 0,                     -- total pukulan yang dikirim (untuk ukur kecepatan nyata)
+    HitLog = {},                  -- waktu pukulan terakhir
     Collected = 0,                -- jumlah drop yang diambil
     CollectFail = 0,              -- jumlah drop yang ditolak server
     LastAction = "-",
@@ -1403,6 +1405,13 @@ Config.add("Clear", Clear, { "UseBlock", "ScaffoldId", "Collect", "Sweep" })
 Config.add("Farmer", Farmer, {
     "Harvest", "Plant", "Collect", "UseBlock", "ScaffoldId", "HarvestMs", "PlantMs", "SeedId",
 })
+function State.logHit()
+    State.Hits += 1
+    local log = State.HitLog
+    log[#log + 1] = os.clock()
+    if #log > 40 then table.remove(log, 1) end
+end
+
 -- update 1084: game memberi jeda minimal antar aksi (place ~0.135 dtk, pukul ~0.19 dtk)
 State.PlaceMs = math.max(State.PlaceMs, 140)
 State.BreakMs = math.max(State.BreakMs, 200)
@@ -2235,6 +2244,7 @@ local function tryBreak(x, y, includeBg)
             State.LastAction = "Error pukul: " .. tostring(err)
             return nil
         end
+        State.logHit()
         if State.Visual then Anim.swing(x, y, "punch") end
         if tileAt(layer, x, y) ~= id then
             Drops.brokeAt[key] = os.clock()
@@ -2253,6 +2263,7 @@ local function tryBreak(x, y, includeBg)
         HitCount[key] = hc
     end
     hc.n += 1
+    State.logHit()
     sendHitFx(x, y)
     if State.Visual then Anim.swing(x, y, "punch") end
     local need = hitsNeeded(id)
@@ -2774,6 +2785,15 @@ local function updateStatus()
         .. "\nKarakter : " .. (px and ("(" .. px .. "," .. py .. ")") or "tidak di world")
         .. "\nTile     : " .. offsetsText()
         .. "\nPlace/Break/Collect : " .. State.Placed .. " / " .. State.Broken .. " / " .. State.Collected
+        .. "\nPukulan  : " .. State.Hits .. " total | " .. (function()
+            local n, now = 0, os.clock()
+            for i = #State.HitLog, 1, -1 do
+                if now - State.HitLog[i] <= 5 then n += 1 else break end
+            end
+            return ("%.1f"):format(n / 5)
+        end)() .. "/dtk (5 dtk terakhir)"
+        .. "\nKecepatan: place " .. State.PlaceMs .. " | break " .. State.BreakMs
+        .. " | jeda hancur " .. State.AfterBreakMs .. " | multi " .. tostring(State.MultiTarget)
         .. (State.CollectFail > 0 and (" (ditolak " .. State.CollectFail .. ")") or "")
         .. "\nCollect r3 [" .. tostring(State.CollectMode) .. "]: " .. tostring(Drops.Status or "menunggu koneksi")
         .. "\nDaftar drop: " .. tostring(#Drops.snapshot()) .. " | sumber: " .. tostring(Drops.Source or "belum ditemukan")
